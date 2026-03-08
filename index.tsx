@@ -9,15 +9,15 @@ import { Devs } from "@utils/constants";
 import { ModalContent, ModalFooter, ModalHeader, ModalProps, ModalRoot, ModalSize, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
 import { findStoreLazy } from "@webpack";
-import { Button, Forms, React } from "@webpack/common";
+import { Button, React } from "@webpack/common";
 
-import { dumpFolderStructure, GuildFolder, moveGuildById, testCombine, testMoveToFolder, testRemoveFromFolderFirst } from "./debug";
+import { dumpFolderStructure, GuildFolder, moveGuildById, testCombine, testMoveToFolder, testRemoveFromFolderFirst, updateFolderProperties } from "./debug";
 import style from "./style.css?managed";
 
 const GuildStore = findStoreLazy("GuildStore");
 const SortedGuildStore = findStoreLazy("SortedGuildStore");
 
-function GuildIcon({ guildId, size = 32 }: { guildId: string; size?: number; }) {
+export function GuildIcon({ guildId, size = 32 }: { guildId: string; size?: number; }) {
     const guild = GuildStore.getGuild(guildId);
     if (guild?.icon) {
         return <img
@@ -35,124 +35,180 @@ function GuildIcon({ guildId, size = 32 }: { guildId: string; size?: number; }) 
     </div>;
 }
 
-/** 上部トレイ: ドロップゾーン */
-function FolderTray({ guildIds, onRemove }: { guildIds: string[]; onRemove: (guildId: string) => void; }) {
+/**
+ * V2: フォルダカードグリッド型モーダル
+ * - body 全体を使ってフォルダを液晶グラスカードで横並び表示
+ * - ungrouped サーバーは下部にまとめて表示
+ * - 一覧性を高め、グループの視認性を改善
+ */
+
+const MAX_PREVIEW = 2;
+
+/** Discord の folderColor 整数を #RRGGBB 文字列に変換 */
+function colorToHex(color: number): string {
+    return `#${(color & 0xFFFFFF).toString(16).padStart(6, "0")}`;
+}
+
+/** Discord フォルダのプリセットカラー */
+const FOLDER_COLORS = [
+    0xE74C3C, // red
+    0xE67E22, // orange
+    0xF1C40F, // yellow
+    0x2ECC71, // green
+    0x1ABC9C, // teal
+    0x3498DB, // blue
+    0x9B59B6, // purple
+    0xE91E63, // pink
+];
+
+/** フォルダ名・色の編集モーダル */
+function FolderEditModal({ props, folder, onSave }: {
+    props: ModalProps;
+    folder: GuildFolder;
+    onSave: (name: string, color: number | undefined) => void;
+}) {
+    const [name, setName] = React.useState(folder.folderName ?? "");
+    const [color, setColor] = React.useState<number | undefined>(folder.folderColor);
+
     return (
-        <div className="vc-ss-tray">
-            {guildIds.length === 0
-                ? <div className="vc-ss-tray-placeholder">クリックしてここに追加</div>
-                : <div className="vc-ss-tray-items">
-                    {guildIds.map(guildId => (
+        <ModalRoot {...props} size={ModalSize.SMALL}>
+            <ModalHeader>
+                <h4 className="vc-ss-modal-title">フォルダを編集</h4>
+            </ModalHeader>
+            <ModalContent className="vc-ss-edit-body">
+                <div className="vc-ss-edit-label">フォルダ名</div>
+                <input
+                    className="vc-ss-edit-input"
+                    value={name}
+                    onChange={e => setName(e.currentTarget.value)}
+                    placeholder="フォルダ名"
+                    maxLength={100}
+                    autoFocus
+                />
+                <div className="vc-ss-edit-label">色</div>
+                <div className="vc-ss-edit-colors">
+                    {/* 色なし */}
+                    <div
+                        className={`vc-ss-edit-swatch vc-ss-edit-swatch--none${color === undefined ? " vc-ss-edit-swatch--selected" : ""}`}
+                        onClick={() => setColor(undefined)}
+                        title="色なし"
+                    />
+                    {FOLDER_COLORS.map(c => (
                         <div
-                            key={guildId}
-                            className="vc-ss-tray-item"
-                            onClick={() => onRemove(guildId)}
-                            data-name={GuildStore.getGuild(guildId)?.name ?? guildId}
-                        >
-                            <GuildIcon guildId={guildId} size={40} />
-                        </div>
+                            key={c}
+                            className={`vc-ss-edit-swatch${color === c ? " vc-ss-edit-swatch--selected" : ""}`}
+                            style={{ background: colorToHex(c) }}
+                            onClick={() => setColor(c)}
+                            title={colorToHex(c)}
+                        />
                     ))}
                 </div>
-            }
-        </div>
+            </ModalContent>
+            <ModalFooter>
+                <Button color={Button.Colors.PRIMARY} onClick={() => { onSave(name, color); props.onClose(); }}>
+                    保存
+                </Button>
+                <Button color={Button.Colors.RED} onClick={props.onClose}>
+                    キャンセル
+                </Button>
+            </ModalFooter>
+        </ModalRoot>
     );
 }
 
-/** メインリスト: フォルダ・サーバー一覧 */
-function ServerList({ folders, onServerClick }: { folders: GuildFolder[]; onServerClick: (guildId: string) => void; }) {
+/** フォルダ1つをカード表示 */
+function FolderCard({ folder, onUpdate }: { folder: GuildFolder; onUpdate: (name: string, color: number | undefined) => void; }) {
+    const name = folder.folderName || (folder.folderId ? "フォルダ" : "グループなし");
+    const total = folder.guildIds.length;
+    const collapsible = total > MAX_PREVIEW;
+    const [expanded, setExpanded] = React.useState(false);
+    const visibleIds = collapsible && !expanded ? folder.guildIds.slice(0, MAX_PREVIEW) : folder.guildIds;
+
+    const hex = folder.folderColor != null ? colorToHex(folder.folderColor) : null;
+    const colorStyle = hex ? {
+        borderColor: `${hex}66`,
+        background: `${hex}14`,
+    } : undefined;
+
+    function handleContextMenu(e: React.MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+        openModal(modalProps => (
+            <FolderEditModal props={modalProps} folder={folder} onSave={onUpdate} />
+        ));
+    }
+
     return (
-        <div className="vc-ss-list">
-            {folders.map((folder, folderIndex) => (
-                <div key={folder.folderId ?? `ungrouped-${folderIndex}`} className="vc-ss-folder-group">
-                    {folder.folderId && (
-                        <div className="vc-ss-folder-header">
-                            <span className="vc-ss-folder-label">フォルダ {folder.folderId}</span>
-                        </div>
-                    )}
-                    {folder.guildIds.map(guildId => {
-                        const guild = GuildStore.getGuild(guildId);
-                        return (
-                            <div
-                                key={guildId}
-                                className={`vc-ss-row${folder.folderId ? " vc-ss-row--indented" : ""}`}
-                                onClick={() => onServerClick(guildId)}
-                            >
-                                <span className="vc-ss-drag-handle">⠿</span>
-                                <GuildIcon guildId={guildId} />
-                                <span className="vc-ss-guild-name">{guild?.name ?? guildId}</span>
-                            </div>
-                        );
-                    })}
-                </div>
-            ))}
+        <div
+            className={`vc-ss-v2-card${collapsible ? " vc-ss-v2-card--collapsible" : ""}`}
+            onClick={collapsible ? () => setExpanded(e => !e) : undefined}
+            onMouseDown={e => { if (e.button === 2) e.stopPropagation(); }}
+            onContextMenu={handleContextMenu}
+            style={colorStyle}
+        >
+            <div className="vc-ss-folder-panel-title">
+                {name}
+                {collapsible && (
+                    <span className="vc-ss-v2-card-toggle">{expanded ? "▲" : "▼"}</span>
+                )}
+            </div>
+            <div className="vc-ss-v2-card-items">
+                {visibleIds.map(guildId => (
+                    <div
+                        key={guildId}
+                        className="vc-ss-v2-card-item"
+                        data-name={GuildStore.getGuild(guildId)?.name ?? guildId}
+                    >
+                        <GuildIcon guildId={guildId} size={40} />
+                    </div>
+                ))}
+                {collapsible && !expanded && (
+                    <div className="vc-ss-v2-card-more">+{total - MAX_PREVIEW}</div>
+                )}
+            </div>
         </div>
     );
 }
 
 function ServerSorterModal({ props }: { props: ModalProps; }) {
     const [folders, setFolders] = React.useState<GuildFolder[]>(() => SortedGuildStore.getGuildFolders());
-    const [trayGuildIds, setTrayGuildIds] = React.useState<string[]>([]);
 
     React.useEffect(() => {
         enableStyle(style);
         return () => void disableStyle(style);
     }, []);
 
-    function handleServerClick(guildId: string) {
-        setFolders(prev => prev.map(f => ({ ...f, guildIds: f.guildIds.filter(id => id !== guildId) })));
-        setTrayGuildIds(prev => [...prev, guildId]);
-    }
-
-    function handleTrayRemove(guildId: string) {
-        setTrayGuildIds(prev => prev.filter(id => id !== guildId));
-        // SortedGuildStore はユーザーの操作（UI上の移動）では更新されないため、
-        // 常に「Discord 起動時点のオリジナルの並び順」を保持している。
-        // これを元の位置の参照として使う。
-        const original = SortedGuildStore.getGuildFolders() as GuildFolder[];
-        setFolders(prev => {
-            // guildId を元々含んでいたオリジナルのエントリを特定
-            const origEntry = original.find(o => o.guildIds.includes(guildId));
-            if (!origEntry) return prev;
-
-            if (origEntry.folderId !== undefined) {
-                // フォルダ内のサーバー: folderId はユニークなので直接マッチできる
-                return prev.map(f => {
-                    if (f.folderId !== origEntry.folderId) return f;
-                    // 注: トレイに複数アイテムがある場合、他のトレイ中アイテムが
-                    //     抜けた状態の guildIds に対して挿入するため、
-                    //     厳密な位置がズレることがある（許容済みのエッジケース）
-                    const origIdx = origEntry.guildIds.indexOf(guildId);
-                    const ids = [...f.guildIds];
-                    ids.splice(origIdx, 0, guildId);
-                    return { ...f, guildIds: ids };
-                });
-            } else {
-                // フォルダなし（ungrouped）の場合:
-                // ungrouped サーバーは1サーバー1エントリで folderId がすべて undefined のため、
-                // folderId ではマッチできない。
-                // オリジナルの ungrouped エントリ群の中での位置インデックスで
-                // 現在の state の対応エントリを特定する。
-                const origUngroupedIdx = original.filter(o => o.folderId === undefined).indexOf(origEntry);
-                const targetEntry = prev.filter(f => f.folderId === undefined)[origUngroupedIdx];
-                if (!targetEntry) return prev;
-                // 元々 [guildId] だけを持つ ungrouped エントリだったので guildIds を復元
-                return prev.map(f => f === targetEntry ? { ...f, guildIds: [guildId] } : f);
-            }
-        });
+    async function handleFolderUpdate(folderId: string, name: string, color: number | undefined) {
+        await updateFolderProperties(folderId, name, color);
+        setFolders(prev => prev.map(f =>
+            f.folderId === folderId ? { ...f, folderName: name, folderColor: color } : f
+        ));
     }
 
     return (
         <ModalRoot {...props} size={ModalSize.LARGE} className="vc-server-sorter-modal">
             <ModalHeader>
-                <Forms.FormTitle tag="h4">Server Sorter</Forms.FormTitle>
+                <h4 className="vc-ss-modal-title">Server Sorter</h4>
             </ModalHeader>
 
-            {/* 上部トレイ */}
-            <FolderTray guildIds={trayGuildIds} onRemove={handleTrayRemove} />
-
-            {/* サーバーリスト */}
-            <ModalContent>
-                <ServerList folders={folders} onServerClick={handleServerClick} />
+            <ModalContent className="vc-ss-v2-body">
+                {/* folders の並び順通りに描画: フォルダはカード、ungrouped はアイコン直置き */}
+                <div className="vc-ss-v2-grid">
+                    {folders.map(folder =>
+                        folder.folderId !== undefined
+                            ? <FolderCard
+                                key={folder.folderId}
+                                folder={folder}
+                                onUpdate={(name, color) => handleFolderUpdate(folder.folderId!, name, color)}
+                            />
+                            : folder.guildIds.map(guildId => (
+                                <div key={guildId} className="vc-ss-v2-bare-item"
+                                    data-name={GuildStore.getGuild(guildId)?.name ?? guildId}>
+                                    <GuildIcon guildId={guildId} size={40} />
+                                </div>
+                            ))
+                    )}
+                </div>
             </ModalContent>
 
             <ModalFooter>

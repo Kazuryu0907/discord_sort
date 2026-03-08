@@ -19,6 +19,9 @@ export function getPreloadedUserSettingsStore() {
 export interface GuildFolder {
     folderId: string | undefined;
     guildIds: string[];
+    folderName?: string;
+    folderColor?: number;
+    expanded?: boolean;
 }
 
 export function dumpFolderStructure() {
@@ -71,6 +74,30 @@ export async function moveGuildById(sourceId: string, targetId: string | number 
                     cur.folders.push({ guildIds: [guildId] });
                 }
             }
+        }
+        return cur;
+    }, 0);
+}
+
+/**
+ * フォルダの名前と色を変更して永続化する
+ * @param folderId 変更するフォルダのID
+ * @param name     新しいフォルダ名（空文字でクリア）
+ * @param color    新しい色（undefined でクリア）
+ */
+export async function updateFolderProperties(folderId: string, name: string, color: number | undefined) {
+    const store = getPreloadedUserSettingsStore();
+    if (!store) { console.error("[updateFolderProperties] PreloadedUserSettings store が見つかりません"); return; }
+
+    await store.updateAsync("guildFolders", (cur: any) => {
+        const folder = cur.folders.find((f: any) => f.id?.value === String(folderId));
+        if (!folder) return cur;
+        folder.name = name;
+        if (color !== undefined) {
+            if (!folder.color) folder.color = {};
+            folder.color.value = color;
+        } else {
+            delete folder.color;
         }
         return cur;
     }, 0);

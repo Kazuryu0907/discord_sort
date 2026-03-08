@@ -1,3 +1,25 @@
+:root {
+    --vc-ss-panel-radius: 20px;
+
+    /* Liquid Glass */
+    --vc-ss-glass-bg:     rgba(255, 255, 255, 0.06);
+    --vc-ss-glass-border: rgba(255, 255, 255, 0.18);
+    --vc-ss-glass-blur:   blur(24px) saturate(180%);
+    --vc-ss-glass-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+
+    --vc-ss-transition: 0.15s;
+}
+
+.vc-ss-modal-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
 .vc-server-sorter-modal {
     width: 100vw !important;
     max-width: 100vw !important;
@@ -12,44 +34,44 @@
     height: 20vh;
     flex-shrink: 0;
     margin: 12px 16px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+    border-radius: var(--vc-ss-panel-radius);
+    background: var(--vc-ss-glass-bg);
+    backdrop-filter: var(--vc-ss-glass-blur);
+    -webkit-backdrop-filter: var(--vc-ss-glass-blur);
+    border: 1px solid var(--vc-ss-glass-border);
+    box-shadow: var(--vc-ss-glass-shadow);
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    align-items: stretch;
     overflow: visible;
 }
 
 .vc-ss-tray-placeholder {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--channels-default);
     font-size: 13px;
     pointer-events: none;
 }
 
 .vc-ss-tray-items {
+    flex: 1;
     display: flex;
     gap: 8px;
     align-items: center;
+    justify-content: center;
     padding: 0 12px;
     flex-wrap: wrap;
 }
 
 .vc-ss-tray-item {
+    position: relative;
     cursor: pointer;
     border-radius: 50%;
-    transition: transform 0.15s, opacity 0.15s;
+    transition: transform var(--vc-ss-transition), opacity var(--vc-ss-transition);
     opacity: 0.9;
-}
-
-.vc-ss-tray-item {
-    position: relative;
 }
 
 .vc-ss-tray-item:hover {
@@ -72,16 +94,60 @@
     border-radius: 6px;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity var(--vc-ss-transition);
 }
 
 .vc-ss-tray-item:hover::after {
     opacity: 1;
 }
 
+/* body: 左リスト + 右パネルの横並び */
+.vc-ss-body {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+
 /* サーバーリスト */
 .vc-ss-list {
+    flex: 1;
+    overflow-y: auto;
     padding: 8px 0;
+}
+
+/* Discord thin スクロールバー（vc-ss-list / vc-ss-folder-panel 共通） */
+.vc-ss-list::-webkit-scrollbar,
+.vc-ss-folder-panel::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.vc-ss-list::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-thin-track);
+    border-color: var(--scrollbar-thin-track);
+}
+
+.vc-ss-folder-panel::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-thin-track);
+    border-color: var(--scrollbar-thin-track);
+    /* 角丸の内側に収まるようにスクロールバーを上下に押し込む */
+    margin-top: var(--vc-ss-panel-radius);
+    margin-bottom: var(--vc-ss-panel-radius);
+}
+
+.vc-ss-list::-webkit-scrollbar-thumb,
+.vc-ss-folder-panel::-webkit-scrollbar-thumb {
+    background-clip: padding-box;
+    background-color: var(--scrollbar-thin-thumb);
+    border: 2px solid transparent;
+    border-radius: 4px;
+    min-height: 40px;
+}
+
+.vc-ss-list::-webkit-scrollbar-corner,
+.vc-ss-folder-panel::-webkit-scrollbar-corner {
+    background-color: transparent;
 }
 
 .vc-ss-folder-group {
@@ -110,7 +176,7 @@
     padding: 5px 16px;
     border-radius: 4px;
     cursor: grab;
-    transition: background 0.1s;
+    transition: background var(--vc-ss-transition);
 }
 
 .vc-ss-row:hover {
@@ -140,4 +206,305 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* 右サイドパネル: フォルダ一覧 - Liquid Glass */
+.vc-ss-folder-panel {
+    width: 200px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    margin: 12px 16px 12px 8px;
+    border-radius: var(--vc-ss-panel-radius);
+    background: var(--vc-ss-glass-bg);
+    backdrop-filter: var(--vc-ss-glass-blur);
+    -webkit-backdrop-filter: var(--vc-ss-glass-blur);
+    border: 1px solid var(--vc-ss-glass-border);
+    box-shadow: var(--vc-ss-glass-shadow);
+    padding: 8px 0;
+}
+
+.vc-ss-folder-panel-title {
+    padding: 8px 14px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--channels-default);
+    display: flex;
+    align-items: center;
+}
+
+.vc-ss-folder-panel-empty {
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--channels-default);
+    opacity: 0.5;
+}
+
+.vc-ss-folder-panel-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background var(--vc-ss-transition);
+}
+
+.vc-ss-folder-panel-item:hover {
+    background: var(--interactive-background-hover);
+}
+
+.vc-ss-folder-panel-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.vc-ss-folder-panel-name {
+    font-size: 13px;
+    color: var(--text-strong);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vc-ss-folder-panel-count {
+    font-size: 11px;
+    color: var(--channels-default);
+    background: var(--background-base-low);
+    border-radius: 10px;
+    padding: 1px 6px;
+    flex-shrink: 0;
+}
+
+/* ── V2: フォルダカードグリッド ── */
+.vc-ss-v2-body {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+    gap: 16px;
+}
+
+.vc-ss-v2-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 12px;
+}
+
+/* フォルダカード: liquid glass */
+.vc-ss-v2-card {
+    grid-column: span 2;
+    border-radius: var(--vc-ss-panel-radius);
+    background: var(--vc-ss-glass-bg);
+    backdrop-filter: var(--vc-ss-glass-blur);
+    -webkit-backdrop-filter: var(--vc-ss-glass-blur);
+    border: 1px solid var(--vc-ss-glass-border);
+    box-shadow: var(--vc-ss-glass-shadow);
+    padding: 8px 0 12px;
+    min-height: 80px;
+}
+
+.vc-ss-v2-card-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 12px 0;
+}
+
+.vc-ss-v2-card-item {
+    position: relative;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: transform var(--vc-ss-transition), opacity var(--vc-ss-transition);
+    opacity: 0.9;
+}
+
+.vc-ss-v2-card-item:hover {
+    transform: scale(1.1);
+    opacity: 1;
+}
+
+/* ホバーツールチップ */
+.vc-ss-v2-card-item::after {
+    content: attr(data-name);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-overlay-4, rgba(0, 0, 0, 0.75));
+    color: var(--text-strong);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 4px 8px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--vc-ss-transition);
+    z-index: 10;
+}
+
+.vc-ss-v2-card-item:hover::after {
+    opacity: 1;
+}
+
+/* ungrouped: カードなしでアイコンをグリッドに直置き */
+.vc-ss-v2-bare-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: background var(--vc-ss-transition);
+}
+
+.vc-ss-v2-bare-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* ホバーツールチップ */
+.vc-ss-v2-bare-item::after {
+    content: attr(data-name);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-overlay-4, rgba(0, 0, 0, 0.75));
+    color: var(--text-strong);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 4px 8px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--vc-ss-transition);
+    z-index: 10;
+}
+
+.vc-ss-v2-bare-item:hover::after {
+    opacity: 1;
+}
+
+/* 折りたたみ可能カード */
+.vc-ss-v2-card--collapsible {
+    cursor: pointer;
+}
+
+.vc-ss-v2-card--collapsible:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* タイトル行の開閉トグル矢印 */
+.vc-ss-v2-card-toggle {
+    margin-left: auto;
+    padding-right: 14px;
+    font-size: 10px;
+    color: var(--channels-default);
+    opacity: 0.6;
+}
+
+/* ── フォルダ編集モーダル ── */
+.vc-ss-edit-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px;
+    padding: 16px !important;
+}
+
+.vc-ss-edit-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--channels-default);
+    margin-bottom: 2px;
+}
+
+.vc-ss-edit-input {
+    background: var(--background-base-low);
+    border: 1px solid var(--vc-ss-glass-border);
+    border-radius: 8px;
+    color: var(--text-strong);
+    font-size: 14px;
+    padding: 8px 12px;
+    width: 100%;
+    outline: none;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+}
+
+.vc-ss-edit-input:focus {
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.vc-ss-edit-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vc-ss-edit-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform var(--vc-ss-transition), border-color var(--vc-ss-transition);
+    flex-shrink: 0;
+}
+
+.vc-ss-edit-swatch:hover {
+    transform: scale(1.2);
+}
+
+.vc-ss-edit-swatch--selected {
+    border-color: var(--text-strong);
+}
+
+/* 色なしスウォッチ: 斜線 */
+.vc-ss-edit-swatch--none {
+    background: var(--background-base-low);
+    border: 2px dashed var(--vc-ss-glass-border);
+    position: relative;
+    overflow: hidden;
+}
+
+.vc-ss-edit-swatch--none::before,
+.vc-ss-edit-swatch--none::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 65%;
+    height: 2px;
+    background: var(--channels-default);
+}
+
+.vc-ss-edit-swatch--none::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.vc-ss-edit-swatch--none::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* +N バッジ */
+.vc-ss-v2-card-more {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--vc-ss-glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--channels-default);
+    flex-shrink: 0;
 }
