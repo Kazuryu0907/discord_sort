@@ -79,25 +79,31 @@ export async function moveGuildById(sourceId: string, targetId: string | number 
     }, 0);
 }
 
-/**
- * フォルダの名前と色を変更して永続化する
- * @param folderId 変更するフォルダのID
- * @param name     新しいフォルダ名（空文字でクリア）
- * @param color    新しい色（undefined でクリア）
- */
-export async function updateFolderProperties(folderId: string, name: string, color: number | undefined) {
-    const store = getPreloadedUserSettingsStore();
-    if (!store) { console.error("[updateFolderProperties] PreloadedUserSettings store が見つかりません"); return; }
 
+/**
+ * ローカルで並び替えた folders 配列を proto store に一括書き込みして永続化する
+ * GUILD_MOVE_BY_ID を使わず直接 proto を上書きするため、全件一括適用が可能
+ */
+export async function applyFolderData(folders: GuildFolder[]) {
+    const store = getPreloadedUserSettingsStore();
+    if (!store) { console.error("[applyFolderData] PreloadedUserSettings store が見つかりません"); return; }
+    console.log("[applyFolderData] フォルダデータを一括適用", folders);
     await store.updateAsync("guildFolders", (cur: any) => {
-        const folder = cur.folders.find((f: any) => f.id?.value === String(folderId));
-        if (!folder) return cur;
-        folder.name = name;
-        if (color !== undefined) {
-            if (!folder.color) folder.color = {};
-            folder.color.value = color;
-        } else {
-            delete folder.color;
+        cur.folders.length = 0;
+        for (const f of folders) {
+            if (f.folderId !== undefined) {
+                const entry: any = {
+                    id: { value: String(f.folderId) },
+                    guildIds: [...f.guildIds],
+                };
+                if (f.folderName) entry.name = { value: f.folderName };
+                if (f.folderColor !== undefined) entry.color = { value: f.folderColor };
+                cur.folders.push(entry);
+            } else {
+                for (const guildId of f.guildIds) {
+                    cur.folders.push({ guildIds: [guildId] });
+                }
+            }
         }
         return cur;
     }, 0);

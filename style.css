@@ -357,13 +357,18 @@
     align-items: center;
     justify-content: center;
     min-height: 80px;
-    cursor: pointer;
+    cursor: grab;
     border-radius: 12px;
-    transition: background var(--vc-ss-transition);
+    border: 1px solid var(--vc-ss-glass-border);
+    background: var(--vc-ss-glass-bg);
+    backdrop-filter: var(--vc-ss-glass-blur);
+    -webkit-backdrop-filter: var(--vc-ss-glass-blur);
+    transition: border-color var(--vc-ss-transition), background var(--vc-ss-transition);
 }
 
 .vc-ss-v2-bare-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.09);
 }
 
 /* ホバーツールチップ */
@@ -392,7 +397,30 @@
 
 /* 折りたたみ可能カード */
 .vc-ss-v2-card--collapsible {
-    cursor: pointer;
+    cursor: grab;
+}
+
+
+/* ── DnD: ドラッグ中のアイテム ── */
+.vc-ss-v2-card--dragging,
+.vc-ss-v2-bare-item--dragging {
+    opacity: 0.35;
+    cursor: grabbing;
+}
+
+/* ── DnD: ドロップターゲット ── */
+.vc-ss-v2-card--drop-target {
+    border-color: rgba(255, 255, 255, 0.55);
+    border-left: 3px solid rgba(255, 255, 255, 0.8);
+    box-shadow:
+        0 0 0 2px rgba(255, 255, 255, 0.25),
+        var(--vc-ss-glass-shadow);
+}
+
+.vc-ss-v2-bare-item--drop-target {
+    background: rgba(255, 255, 255, 0.12);
+    border-left: 3px solid rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
 }
 
 .vc-ss-v2-card--collapsible:hover {
