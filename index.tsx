@@ -15,20 +15,48 @@ import definePlugin, { OptionType } from "@utils/types";
 import { findStoreLazy } from "@webpack";
 import { Button, React, showToast, Toasts, Tooltip } from "@webpack/common";
 
+import { applyFolderData, dumpFolderStructure, GuildFolder, moveGuildById, testCombine, testMoveToFolder, testRemoveFromFolderFirst } from "./debug";
+import { getTutorialTips, t } from "./i18n";
+import style from "./style.css?managed";
+
+// ── ストア ──────────────────────────────────────────────────────────────────
+
+const GuildStore = findStoreLazy("GuildStore");
+const SortedGuildStore = findStoreLazy("SortedGuildStore");
+
+// ── プラグイン設定 ───────────────────────────────────────────────────────────
+
 const settings = definePluginSettings({
     tutorialSeen: {
         type: OptionType.BOOLEAN,
-        description: "チュートリアルを表示済みかどうか",
+        description: "Whether the tutorial has been seen",
         default: false,
         hidden: true,
     },
 });
 
-import { applyFolderData, dumpFolderStructure, GuildFolder, moveGuildById, testCombine, testMoveToFolder, testRemoveFromFolderFirst } from "./debug";
-import style from "./style.css?managed";
+// ── 定数・ユーティリティ ────────────────────────────────────────────────────
 
-const GuildStore = findStoreLazy("GuildStore");
-const SortedGuildStore = findStoreLazy("SortedGuildStore");
+const MAX_PREVIEW = 2;
+
+const FOLDER_COLORS = [
+    0xE74C3C, 0xE67E22, 0xF1C40F, 0x2ECC71,
+    0x1ABC9C, 0x3498DB, 0x9B59B6, 0xE91E63,
+];
+
+function colorToHex(color: number): string {
+    return `#${(color & 0xFFFFFF).toString(16).padStart(6, "0")}`;
+}
+
+function keyOf(folder: GuildFolder): string {
+    return folder.folderId !== undefined ? `f:${folder.folderId}` : `b:${folder.guildIds[0]}`;
+}
+
+function purgeEmpty(arr: GuildFolder[]): GuildFolder[] {
+    return arr.filter(f => f.folderId === undefined || f.guildIds.length > 0);
+}
+
+// ── コンポーネント ──────────────────────────────────────────────────────────
 
 export function GuildIcon({ guildId, size = 32 }: { guildId: string; size?: number; }) {
     const guild = GuildStore.getGuild(guildId);
@@ -48,21 +76,6 @@ export function GuildIcon({ guildId, size = 32 }: { guildId: string; size?: numb
     </div>;
 }
 
-const MAX_PREVIEW = 2;
-
-function colorToHex(color: number): string {
-    return `#${(color & 0xFFFFFF).toString(16).padStart(6, "0")}`;
-}
-
-const FOLDER_COLORS = [
-    0xE74C3C, 0xE67E22, 0xF1C40F, 0x2ECC71,
-    0x1ABC9C, 0x3498DB, 0x9B59B6, 0xE91E63,
-];
-
-function keyOf(folder: GuildFolder): string {
-    return folder.folderId !== undefined ? `f:${folder.folderId}` : `b:${folder.guildIds[0]}`;
-}
-
 function FolderEditModal({ props, folder, onSave }: {
     props: ModalProps;
     folder: GuildFolder;
@@ -74,24 +87,24 @@ function FolderEditModal({ props, folder, onSave }: {
     return (
         <ModalRoot {...props} size={ModalSize.SMALL}>
             <ModalHeader>
-                <h4 className="vc-ss-modal-title">フォルダを編集</h4>
+                <h4 className="vc-ss-modal-title">{t("folderEditTitle")}</h4>
             </ModalHeader>
             <ModalContent className="vc-ss-edit-body">
-                <div className="vc-ss-edit-label">フォルダ名</div>
+                <div className="vc-ss-edit-label">{t("folderNameLabel")}</div>
                 <input
                     className="vc-ss-edit-input"
                     value={name}
                     onChange={e => setName(e.currentTarget.value)}
-                    placeholder="フォルダ名"
+                    placeholder={t("folderNamePlaceholder")}
                     maxLength={100}
                     autoFocus
                 />
-                <div className="vc-ss-edit-label">色</div>
+                <div className="vc-ss-edit-label">{t("colorLabel")}</div>
                 <div className="vc-ss-edit-colors">
                     <div
                         className={`vc-ss-edit-swatch vc-ss-edit-swatch--none${color === undefined ? " vc-ss-edit-swatch--selected" : ""}`}
                         onClick={() => setColor(undefined)}
-                        title="色なし"
+                        title={t("colorNone")}
                     />
                     {FOLDER_COLORS.map(c => (
                         <div
@@ -106,11 +119,11 @@ function FolderEditModal({ props, folder, onSave }: {
             </ModalContent>
             <ModalFooter>
                 <Button color={Button.Colors.BRAND} onClick={() => { onSave(name, color); props.onClose(); }}>
-                    保存
+                    {t("save")}
                 </Button>
                 <div style={{ flex: 1 }} />
                 <Button color={Button.Colors.PRIMARY} onClick={props.onClose}>
-                    キャンセル
+                    {t("cancel")}
                 </Button>
             </ModalFooter>
         </ModalRoot>
@@ -137,7 +150,7 @@ function FolderCard({ folder, onUpdate, drag, setRef, dragKey, onItemDragStart, 
     onItemDragStart: (key: string) => void;
     onItemDragEnd: () => void;
 }) {
-    const name = folder.folderName || (folder.folderId ? "フォルダ" : "グループなし");
+    const name = folder.folderName || t("defaultFolderName");
     const total = folder.guildIds.length;
     const collapsible = total > MAX_PREVIEW;
     const [expanded, setExpanded] = React.useState(false);
@@ -208,45 +221,23 @@ function FolderCard({ folder, onUpdate, drag, setRef, dragKey, onItemDragStart, 
 }
 
 function TutorialOverlay({ onDismiss }: { onDismiss: () => void; }) {
-    const tips = [
-        {
-            icon: "↕️",
-            title: "並び替え",
-            desc: "サーバー・グループをドラッグ&ドロップして順番を入れ替えられます",
-        },
-        {
-            icon: "📂",
-            title: "グループに追加",
-            desc: "サーバーをグループの中央にドロップするとグループに追加できます",
-        },
-        {
-            icon: "➕",
-            title: "グループ新規作成",
-            desc: "フッターの「新規グループ作成」ボタンで空のグループを追加できます",
-        },
-        {
-            icon: "✏️",
-            title: "グループ編集",
-            desc: "グループを右クリックして名前や色を変更できます",
-        },
-    ];
-
+    const tips = getTutorialTips();
     return (
         <div className="vc-ss-tutorial-overlay">
             <div className="vc-ss-tutorial-box">
-                <h3 className="vc-ss-tutorial-title">使い方</h3>
-                <div className="vc-ss-tutorial-subtitle">右上の <strong>?</strong> ボタンからいつでも見返せます</div>
+                <h3 className="vc-ss-tutorial-title">{t("tutorialTitle")}</h3>
+                <div className="vc-ss-tutorial-subtitle">{t("tutorialSubtitle")}</div>
                 <div className="vc-ss-tutorial-grid">
-                    {tips.map(t => (
-                        <div key={t.title} className="vc-ss-tutorial-card">
-                            <div className="vc-ss-tutorial-icon">{t.icon}</div>
-                            <div className="vc-ss-tutorial-tip-title">{t.title}</div>
-                            <div className="vc-ss-tutorial-desc">{t.desc}</div>
+                    {tips.map(tip => (
+                        <div key={tip.title} className="vc-ss-tutorial-card">
+                            <div className="vc-ss-tutorial-icon">{tip.icon}</div>
+                            <div className="vc-ss-tutorial-tip-title">{tip.title}</div>
+                            <div className="vc-ss-tutorial-desc">{tip.desc}</div>
                         </div>
                     ))}
                 </div>
                 <Button color={Button.Colors.BRAND} onClick={onDismiss}>
-                    わかった！
+                    {t("tutorialDismiss")}
                 </Button>
             </div>
         </div>
@@ -260,12 +251,9 @@ function flipAnimate(el: HTMLElement, prevRect: DOMRect) {
     const dy = prevRect.top - currRect.top;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
 
-    // Invert: 旧位置に瞬時に戻す（transition なし）
     el.style.transition = "none";
     el.style.transform = `translate(${dx}px, ${dy}px)`;
-    // reflow を強制して transform を確定させる
-    el.getBoundingClientRect();
-    // Play: 新位置へアニメーション
+    el.getBoundingClientRect(); // reflow
     el.style.transition = "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)";
     el.style.transform = "";
     el.addEventListener("transitionend", () => { el.style.transition = ""; }, { once: true });
@@ -281,9 +269,7 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
         );
     });
 
-    const [showTutorial, setShowTutorial] = React.useState(
-        () => !settings.store.tutorialSeen
-    );
+    const [showTutorial, setShowTutorial] = React.useState(() => !settings.store.tutorialSeen);
     function dismissTutorial() {
         settings.store.tutorialSeen = true;
         setShowTutorial(false);
@@ -293,11 +279,9 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
     const [dropKey, setDropKey] = React.useState<string | null>(null);
     const [dropMode, setDropMode] = React.useState<"reorder" | "merge" | null>(null);
 
-    // FLIP: アイテムの DOM 要素と「ドロップ前の位置」を保持
     const itemRefs = React.useRef<Map<string, HTMLElement>>(new Map());
     const prevPositions = React.useRef<Map<string, DOMRect>>(new Map());
 
-    // folders が変わった後（DOM 更新済み・描画前）に FLIP を実行
     React.useLayoutEffect(() => {
         if (prevPositions.current.size === 0) return;
         for (const [key, el] of itemRefs.current) {
@@ -309,24 +293,18 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
 
     function capturePositions() {
         const map = new Map<string, DOMRect>();
-        for (const [key, el] of itemRefs.current) {
-            map.set(key, el.getBoundingClientRect());
-        }
+        for (const [key, el] of itemRefs.current) map.set(key, el.getBoundingClientRect());
         prevPositions.current = map;
     }
 
     function resetDrag() { setDragKey(null); setDropKey(null); setDropMode(null); }
-
-    function purgeEmpty(arr: GuildFolder[]) {
-        return arr.filter(f => f.folderId === undefined || f.guildIds.length > 0);
-    }
 
     function handleDrop(fromKey: string, toKey: string) {
         if (fromKey === toKey) return;
 
         // ── ドロップ先がフォルダ ──
         if (toKey.startsWith("f:")) {
-            // 端ゾーン: サーバー1個をフォルダに追加（f:→f: は対象外）
+            // 中央ゾーン: サーバー1個をフォルダに追加（f:→f: は対象外）
             if (dropMode === "merge" && !fromKey.startsWith("f:")) {
                 const guildId = fromKey.startsWith("b:") ? fromKey.slice(2) : fromKey.split(":")[2];
                 const fromFolderKey = fromKey.startsWith("i:") ? `f:${fromKey.split(":")[1]}` : null;
@@ -345,27 +323,24 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
                 });
                 resetDrag(); return;
             }
-            // 端ゾーン (i:): サーバーをフォルダから取り出して対象フォルダの前に ungrouped 挿入
+            // 端ゾーン (i:): フォルダから取り出して対象フォルダの前に ungrouped 挿入
             if (fromKey.startsWith("i:")) {
                 const [, fromFolderId, guildId] = fromKey.split(":");
                 const fromFolderKey = `f:${fromFolderId}`;
                 if (fromFolderKey === toKey) { resetDrag(); return; }
                 capturePositions();
                 setFolders(prev => {
-                    const removed = prev.map(f =>
+                    const removed = purgeEmpty(prev.map(f =>
                         keyOf(f) === fromFolderKey ? { ...f, guildIds: f.guildIds.filter(id => id !== guildId) } : f
-                    );
-                    const cleaned = purgeEmpty(removed);
-                    const toIdx = cleaned.findIndex(f => keyOf(f) === toKey);
-                    if (toIdx === -1) return [...cleaned, { folderId: undefined, guildIds: [guildId] }];
-                    const result = [...cleaned];
-                    result.splice(toIdx, 0, { folderId: undefined, guildIds: [guildId] });
+                    ));
+                    const toIdx = removed.findIndex(f => keyOf(f) === toKey);
+                    const result = [...removed];
+                    result.splice(toIdx === -1 ? result.length : toIdx, 0, { folderId: undefined, guildIds: [guildId] });
                     return result;
                 });
                 resetDrag(); return;
             }
             // 端ゾーン (f: / b:): カード・bare item を対象フォルダの前に並び替え
-            if (fromKey === toKey) { resetDrag(); return; }
             capturePositions();
             setFolders(prev => {
                 const arr = [...prev];
@@ -384,16 +359,14 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
         if (fromKey.startsWith("i:")) {
             // フォルダ内サーバーを ungrouped へ取り出す
             const [, fromFolderId, guildId] = fromKey.split(":");
-            const fromFolderKey = `f:${fromFolderId}`;
             capturePositions();
             setFolders(prev => {
                 const removed = purgeEmpty(prev.map(f =>
-                    keyOf(f) === fromFolderKey ? { ...f, guildIds: f.guildIds.filter(id => id !== guildId) } : f
+                    keyOf(f) === `f:${fromFolderId}` ? { ...f, guildIds: f.guildIds.filter(id => id !== guildId) } : f
                 ));
                 const toIdx = removed.findIndex(f => keyOf(f) === toKey);
-                if (toIdx === -1) return [...removed, { folderId: undefined, guildIds: [guildId] }];
                 const result = [...removed];
-                result.splice(toIdx, 0, { folderId: undefined, guildIds: [guildId] });
+                result.splice(toIdx === -1 ? result.length : toIdx, 0, { folderId: undefined, guildIds: [guildId] });
                 return result;
             });
             resetDrag(); return;
@@ -470,7 +443,7 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
             <ModalHeader>
                 <h4 className="vc-ss-modal-title">Server Sorter</h4>
                 <div style={{ flex: 1 }} />
-                <button className="vc-ss-info-btn" onClick={() => setShowTutorial(true)} title="使い方を見る">?</button>
+                <button className="vc-ss-info-btn" onClick={() => setShowTutorial(true)} title={t("viewHelp")}>?</button>
             </ModalHeader>
 
             <ModalContent className="vc-ss-v2-body">
@@ -491,21 +464,22 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
                             />;
                         } else {
                             const guildId = folder.guildIds[0];
+                            const drag = makeDragHandlers(k);
                             return (
                                 <div
                                     key={guildId}
                                     ref={makeRef(k)}
                                     className={[
                                         "vc-ss-v2-bare-item",
-                                        dragKey === k ? "vc-ss-v2-bare-item--dragging" : "",
-                                        dropKey === k ? "vc-ss-v2-bare-item--drop-target" : "",
+                                        drag.isDragging ? "vc-ss-v2-bare-item--dragging" : "",
+                                        drag.isDropTarget ? "vc-ss-v2-bare-item--drop-target" : "",
                                     ].filter(Boolean).join(" ")}
                                     draggable
-                                    onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", k); setDragKey(k); }}
-                                    onDragEnd={resetDrag}
-                                    onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dropKey !== k) setDropKey(k); }}
-                                    onDragLeave={e => { if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget as Node)) setDropKey(null); }}
-                                    onDrop={e => { e.preventDefault(); if (dragKey) handleDrop(dragKey, k); }}
+                                    onDragStart={e => { e.stopPropagation(); drag.onDragStart(e); }}
+                                    onDragEnd={drag.onDragEnd}
+                                    onDragOver={drag.onDragOver}
+                                    onDragLeave={drag.onDragLeave}
+                                    onDrop={drag.onDrop}
                                 >
                                     <div className="vc-ss-v2-bare-icon" data-name={GuildStore.getGuild(guildId)?.name ?? guildId}>
                                         <GuildIcon guildId={guildId} size={40} />
@@ -520,26 +494,23 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
             <ModalFooter className="vc-ss-footer">
                 {/* TODO: offlineでもsuccessになる */}
                 <Button color={Button.Colors.GREEN} onClick={async () => {
-                        try {
-                            await applyFolderData(folders);
-                            showToast("並び替えを適用しました", Toasts.Type.SUCCESS);
-                        } catch (e) {
-                            showToast(`適用に失敗しました: ${e instanceof Error ? e.message : e}`, Toasts.Type.FAILURE);
-                        }
-                    }}>
-                    並び替えを適用
+                    try {
+                        await applyFolderData(folders);
+                        showToast(t("applySuccess"), Toasts.Type.SUCCESS);
+                    } catch (e) {
+                        showToast(`${t("applyFailure")}: ${e instanceof Error ? e.message : e}`, Toasts.Type.FAILURE);
+                    }
+                }}>
+                    {t("applySort")}
                 </Button>
                 <Button color={Button.Colors.BRAND} onClick={handleCreateGroup}>
-                    新規グループ作成
+                    {t("createGroup")}
                 </Button>
                 <Button color={Button.Colors.PRIMARY} onClick={props.onClose}>
-                    閉じる
+                    {t("close")}
                 </Button>
-                <Button
-                    color={Button.Colors.RED}
-                    onClick={() => (window as any).DiscordNative?.app?.relaunch()}
-                >
-                    Discord を再起動
+                <Button color={Button.Colors.RED} onClick={() => (window as any).DiscordNative?.app?.relaunch()}>
+                    {t("restart")}
                 </Button>
             </ModalFooter>
         </ModalRoot>
@@ -562,7 +533,7 @@ function SorterListButton() {
                     <div style={{ insetInlineStart: 0, position: "absolute", top: 0, alignItems: "center", contain: "layout size", display: "flex", justifyContent: "flex-start", overflow: "hidden", width: "8px", height: "100%" }}></div>
                     <span>
                         <div className="vc-server-sorter-guild-wrapper">
-                            <FolderIcon className="vc-ss-list-btn-icon" width={24} height={24} style={{ position: "absolute", x: 0, y: 0 , width: "40px" }} />
+                            <FolderIcon className="vc-ss-list-btn-icon" width={24} height={24} style={{ position: "absolute", x: 0, y: 0, width: "40px" }} />
                         </div>
                     </span>
                 </div>
@@ -573,7 +544,7 @@ function SorterListButton() {
 
 export default definePlugin({
     name: "ServerSorter",
-    description: "GUIでDiscordサーバーをドラッグ&ドロップでソートできるプラグイン",
+    description: "Sort Discord servers via drag & drop GUI",
     authors: [Devs.Ven],
     dependencies: ["ServerListAPI"],
     settings,

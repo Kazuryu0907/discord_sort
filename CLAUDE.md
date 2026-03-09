@@ -11,6 +11,7 @@ ServerSorter - DiscordのサーバーをGUIで並び替えできるVencordプラ
 ```
 src/userplugins/discord_sort/
 ├── index.tsx     # プラグイン定義・V2モーダルUI（現行）
+├── i18n.ts       # 翻訳文字列（ja / en）・t() / getTutorialTips()
 ├── modalV1.tsx   # V1アーカイブ（FolderTray + ServerList + FolderPanel）
 ├── debug.ts      # moveGuildById / updateFolderProperties / dumpFolderStructure 等
 ├── style.css     # モーダル・カード・編集UIのスタイル（CSS変数使用）
@@ -345,3 +346,4 @@ const FOLDER_COLORS = [
 - [x] V2: 初回起動チュートリアルオーバーレイ（4枚カード + わかった！ボタン）
 - [x] V2: ModalHeader の ? ボタンでいつでもチュートリアルを再表示
 - [ ] V2: offline 時の適用成否判定（現状 offline でも success になる）
+- [x] V2: i18n 対応（`i18n.ts` に ja/en 翻訳、`LocaleStore` でロケール検出）
