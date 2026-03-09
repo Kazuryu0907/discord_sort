@@ -103,6 +103,33 @@ pnpm build
 - `applyFolderData` は store が見つからない場合に `throw new Error(...)` する（return ではなく）
 - TODO: offline 時でも success になる（Discord の proto store は offline でも書き込める）
 
+### チュートリアルオーバーレイ（TutorialOverlay）
+
+- 初回モーダル起動時に自動表示（`settings.store.tutorialSeen === false`）
+- ModalContent上に `position: absolute; inset: 0; z-index: 200` でオーバーレイ
+- 4枚のカード（2×2グリッド）で操作方法を説明:
+  - ↕️ 並び替え / 📂 グループに追加 / ➕ グループ新規作成 / ✏️ グループ編集
+- 「右上の **?** ボタンからいつでも見返せます」のサブタイトル表示
+- 「わかった！」ボタンで `settings.store.tutorialSeen = true` → dismiss
+
+```typescript
+const [showTutorial, setShowTutorial] = React.useState(
+    () => !settings.store.tutorialSeen
+);
+function dismissTutorial() {
+    settings.store.tutorialSeen = true;
+    setShowTutorial(false);
+}
+```
+
+- `definePluginSettings` で `tutorialSeen: OptionType.BOOLEAN`（`hidden: true`）を定義
+- デバッグ: `ServerSorterDebug.resetTutorial()` で `tutorialSeen = false` にリセット
+
+### ModalHeader の ? ボタン
+
+- タイトル右端に `vc-ss-info-btn`（丸ボタン, 29×29px）
+- クリックで `setShowTutorial(true)` → いつでもチュートリアルを再表示
+
 ### SorterListButton（サーバーリストのボタン）
 
 ```tsx
@@ -315,5 +342,6 @@ const FOLDER_COLORS = [
 - [x] V2: フォルダ内サーバー → 外へ DnD（bare item の前に ungrouped 挿入 / 別フォルダにマージ）
 - [x] V2: サーバー取り出しで空になったフォルダを自動削除（purgeEmpty）
 - [x] V2: モーダル幅 90vw × 高さ 90vh
+- [x] V2: 初回起動チュートリアルオーバーレイ（4枚カード + わかった！ボタン）
+- [x] V2: ModalHeader の ? ボタンでいつでもチュートリアルを再表示
 - [ ] V2: offline 時の適用成否判定（現状 offline でも success になる）
-- [ ] V2: チュートリアル / 使い方ガイドの作成

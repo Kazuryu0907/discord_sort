@@ -5,14 +5,24 @@
  */
 
 import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
+import { definePluginSettings } from "@api/Settings";
 import { disableStyle, enableStyle } from "@api/Styles";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { FolderIcon } from "@components/Icons";
 import { Devs } from "@utils/constants";
 import { ModalContent, ModalFooter, ModalHeader, ModalProps, ModalRoot, ModalSize, openModal } from "@utils/modal";
-import definePlugin from "@utils/types";
+import definePlugin, { OptionType } from "@utils/types";
 import { findStoreLazy } from "@webpack";
 import { Button, React, showToast, Toasts, Tooltip } from "@webpack/common";
+
+const settings = definePluginSettings({
+    tutorialSeen: {
+        type: OptionType.BOOLEAN,
+        description: "チュートリアルを表示済みかどうか",
+        default: false,
+        hidden: true,
+    },
+});
 
 import { applyFolderData, dumpFolderStructure, GuildFolder, moveGuildById, testCombine, testMoveToFolder, testRemoveFromFolderFirst } from "./debug";
 import style from "./style.css?managed";
@@ -197,6 +207,52 @@ function FolderCard({ folder, onUpdate, drag, setRef, dragKey, onItemDragStart, 
     );
 }
 
+function TutorialOverlay({ onDismiss }: { onDismiss: () => void; }) {
+    const tips = [
+        {
+            icon: "↕️",
+            title: "並び替え",
+            desc: "サーバー・グループをドラッグ&ドロップして順番を入れ替えられます",
+        },
+        {
+            icon: "📂",
+            title: "グループに追加",
+            desc: "サーバーをグループの中央にドロップするとグループに追加できます",
+        },
+        {
+            icon: "➕",
+            title: "グループ新規作成",
+            desc: "フッターの「新規グループ作成」ボタンで空のグループを追加できます",
+        },
+        {
+            icon: "✏️",
+            title: "グループ編集",
+            desc: "グループを右クリックして名前や色を変更できます",
+        },
+    ];
+
+    return (
+        <div className="vc-ss-tutorial-overlay">
+            <div className="vc-ss-tutorial-box">
+                <h3 className="vc-ss-tutorial-title">使い方</h3>
+                <div className="vc-ss-tutorial-subtitle">右上の <strong>?</strong> ボタンからいつでも見返せます</div>
+                <div className="vc-ss-tutorial-grid">
+                    {tips.map(t => (
+                        <div key={t.title} className="vc-ss-tutorial-card">
+                            <div className="vc-ss-tutorial-icon">{t.icon}</div>
+                            <div className="vc-ss-tutorial-tip-title">{t.title}</div>
+                            <div className="vc-ss-tutorial-desc">{t.desc}</div>
+                        </div>
+                    ))}
+                </div>
+                <Button color={Button.Colors.BRAND} onClick={onDismiss}>
+                    わかった！
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 /** FLIP アニメーション: el を旧位置から新位置へスライドさせる */
 function flipAnimate(el: HTMLElement, prevRect: DOMRect) {
     const currRect = el.getBoundingClientRect();
@@ -224,6 +280,14 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
                 : f.guildIds.map(guildId => ({ folderId: undefined, guildIds: [guildId] }))
         );
     });
+
+    const [showTutorial, setShowTutorial] = React.useState(
+        () => !settings.store.tutorialSeen
+    );
+    function dismissTutorial() {
+        settings.store.tutorialSeen = true;
+        setShowTutorial(false);
+    }
 
     const [dragKey, setDragKey] = React.useState<string | null>(null);
     const [dropKey, setDropKey] = React.useState<string | null>(null);
@@ -405,9 +469,12 @@ function ServerSorterModal({ props }: { props: ModalProps; }) {
         <ModalRoot {...props} size={ModalSize.LARGE} className="vc-server-sorter-modal">
             <ModalHeader>
                 <h4 className="vc-ss-modal-title">Server Sorter</h4>
+                <div style={{ flex: 1 }} />
+                <button className="vc-ss-info-btn" onClick={() => setShowTutorial(true)} title="使い方を見る">?</button>
             </ModalHeader>
 
             <ModalContent className="vc-ss-v2-body">
+                {showTutorial && <TutorialOverlay onDismiss={dismissTutorial} />}
                 <div className="vc-ss-v2-grid">
                     {folders.map(folder => {
                         const k = keyOf(folder);
@@ -509,6 +576,7 @@ export default definePlugin({
     description: "GUIでDiscordサーバーをドラッグ&ドロップでソートできるプラグイン",
     authors: [Devs.Ven],
     dependencies: ["ServerListAPI"],
+    settings,
 
     patches: [],
 
@@ -524,6 +592,7 @@ export default definePlugin({
             testCombine,
             testRemoveFromFolderFirst,
             openModal: () => openModal(props => <ServerSorterModal props={props} />),
+            resetTutorial: () => { settings.store.tutorialSeen = false; },
         };
     },
 
