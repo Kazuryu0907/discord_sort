@@ -86,7 +86,7 @@ export async function moveGuildById(sourceId: string, targetId: string | number 
  */
 export async function applyFolderData(folders: GuildFolder[]) {
     const store = getPreloadedUserSettingsStore();
-    if (!store) { console.error("[applyFolderData] PreloadedUserSettings store が見つかりません"); return; }
+    if (!store) throw new Error("PreloadedUserSettings store が見つかりません");
     console.log("[applyFolderData] フォルダデータを一括適用", folders);
     await store.updateAsync("guildFolders", (cur: any) => {
         cur.folders.length = 0;

@@ -2,9 +2,9 @@
     --vc-ss-panel-radius: 20px;
 
     /* Liquid Glass */
-    --vc-ss-glass-bg:     rgba(255, 255, 255, 0.06);
+    --vc-ss-glass-bg: rgba(255, 255, 255, 0.06);
     --vc-ss-glass-border: rgba(255, 255, 255, 0.18);
-    --vc-ss-glass-blur:   blur(24px) saturate(180%);
+    --vc-ss-glass-blur: blur(24px) saturate(180%);
     --vc-ss-glass-shadow:
         0 8px 32px rgba(0, 0, 0, 0.18),
         inset 0 1px 0 rgba(255, 255, 255, 0.22),
@@ -21,12 +21,10 @@
 }
 
 .vc-server-sorter-modal {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
+    width: 90vw !important;
+    max-width: 90vw !important;
+    height: 90vh !important;
+    max-height: 90vh !important;
 }
 
 /* 上部トレイ - Liquid Glass */
@@ -291,6 +289,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     gap: 12px;
+    padding-top: 32px;
 }
 
 /* フォルダカード: liquid glass */
@@ -304,6 +303,7 @@
     box-shadow: var(--vc-ss-glass-shadow);
     padding: 8px 0 12px;
     min-height: 80px;
+    cursor: grab;
 }
 
 .vc-ss-v2-card-items {
@@ -369,10 +369,15 @@
 .vc-ss-v2-bare-item:hover {
     border-color: rgba(255, 255, 255, 0.28);
     background: rgba(255, 255, 255, 0.09);
+    z-index: 100;
 }
 
-/* ホバーツールチップ */
-.vc-ss-v2-bare-item::after {
+/* ホバーツールチップ: アイコンラッパー基準 */
+.vc-ss-v2-bare-icon {
+    position: relative;
+}
+
+.vc-ss-v2-bare-icon::after {
     content: attr(data-name);
     position: absolute;
     bottom: calc(100% + 6px);
@@ -391,15 +396,20 @@
     z-index: 10;
 }
 
-.vc-ss-v2-bare-item:hover::after {
+.vc-ss-v2-bare-item:hover .vc-ss-v2-bare-icon::after {
     opacity: 1;
 }
 
-/* 折りたたみ可能カード */
+/* 折りたたみ可能カード（cursor は .vc-ss-v2-card で共通定義済み） */
 .vc-ss-v2-card--collapsible {
-    cursor: grab;
 }
 
+
+/* ── DnD: フォルダ内アイテムのドラッグ中 ── */
+.vc-ss-v2-card-item--dragging {
+    opacity: 0.35;
+    cursor: grabbing;
+}
 
 /* ── DnD: ドラッグ中のアイテム ── */
 .vc-ss-v2-card--dragging,
@@ -408,12 +418,22 @@
     cursor: grabbing;
 }
 
-/* ── DnD: ドロップターゲット ── */
+/* ── DnD: 並び替えドロップターゲット（左ライン） ── */
 .vc-ss-v2-card--drop-target {
     border-color: rgba(255, 255, 255, 0.55);
     border-left: 3px solid rgba(255, 255, 255, 0.8);
     box-shadow:
         0 0 0 2px rgba(255, 255, 255, 0.25),
+        var(--vc-ss-glass-shadow);
+}
+
+/* ── DnD: グループ追加ドロップターゲット（全体グロー） ── */
+.vc-ss-v2-card--merge-target {
+    border-color: rgba(88, 166, 255, 0.8);
+    background: rgba(88, 166, 255, 0.12);
+    box-shadow:
+        0 0 0 2px rgba(88, 166, 255, 0.35),
+        0 0 16px rgba(88, 166, 255, 0.25),
         var(--vc-ss-glass-shadow);
 }
 
@@ -535,4 +555,58 @@
     font-weight: 700;
     color: var(--channels-default);
     flex-shrink: 0;
+}
+
+/* ── モーダルフッター ── */
+.vc-ss-footer {
+    gap: 12px !important;
+    padding: 16px 24px !important;
+}
+
+/* ── Server Sorter ツールチップ ── */
+.vc-ss-tooltip {
+    font-size: 17px;
+}
+
+/* ── サーバーリストボタン ── */
+.vc-ss-list-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    transition: color var(--vc-ss-transition);
+    color: var(--interactive-normal);
+}
+
+.vc-ss-list-btn:hover {
+    color: var(--interactive-hover);
+}
+
+.vc-ss-list-btn:active {
+    color: var(--interactive-active);
+}
+
+.vc-ss-list-btn-icon {
+    width: 24px;
+    height: 24px;
+}
+.vc-server-sorter-guild-wrapper {
+    align-content: center;
+    align-items: center;
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    box-sizing: border-box;
+    color: var(--text-default);
+    background-color: var(--background-mod-subtle);
+    border: 1px;
+    border-radius: 25%;
+}
+
+.vc-server-sorter-guild-wrapper:hover {
+    background-color: var(--background-brand);
+    color: var(--white);
 }

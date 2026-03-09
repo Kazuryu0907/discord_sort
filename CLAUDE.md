@@ -38,11 +38,12 @@ pnpm build
 │ ModalContent (.vc-ss-v2-body)           │
 │  ┌─────────────────────────────────┐    │
 │  │ .vc-ss-v2-grid (auto-fill grid) │    │
+│  │  padding-top: 32px（tooltip用） │    │
 │  │  [FolderCard] [FolderCard] ...  │    │
 │  │  [bare icon]  [bare icon]  ...  │    │
 │  └─────────────────────────────────┘    │
 ├─────────────────────────────────────────┤
-│ ModalFooter: 閉じる / 再起動            │
+│ ModalFooter: 並び替えを適用 / 閉じる / 再起動 │
 └─────────────────────────────────────────┘
 ```
 
@@ -58,12 +59,18 @@ pnpm build
 - **右クリック**: `FolderEditModal` を開いてフォルダ名・色を編集
   - `onMouseDown` で `button === 2` の伝播を止める（Discord の modal close 防止）
   - `onContextMenu` で `preventDefault + stopPropagation` してモーダルを開く
+- カード内の各サーバーアイコンも `draggable`（キー: `i:${folderId}:${guildId}`）
+  - `onDragStart` で `stopPropagation` して item drag として扱う
+  - `onDragEnd` で `resetDrag()` を呼ぶ（`onItemDragEnd` prop 経由）
 
 ### ungrouped サーバー（bare item）
 
 - `folderId === undefined` のエントリはカードなしで `.vc-ss-v2-bare-item` として直置き
 - `folders` の順番通りにグリッドに並ぶ（フォルダカードと混在）
-- ホバーで `data-name` からサーバー名ツールチップ表示
+- ホバーでサーバー名ツールチップ表示
+  - アイコンを `.vc-ss-v2-bare-icon` ラッパーで包み、`data-name` をそこに持たせる
+  - `::after` はアイコン基準で `bottom: calc(100% + 6px)` に表示（境界ではなくアイコン上）
+  - `.vc-ss-v2-bare-item:hover` に `z-index: 100`（backdrop-filterのスタッキングコンテキスト対策）
 
 ### FolderEditModal
 
@@ -80,18 +87,75 @@ pnpm build
 - カラースウォッチ8色 + 色なし（斜線）で色変更
 - 保存 → `updateFolderProperties` で proto store に永続化 + `setFolders` で即時反映
 
+### 並び替えを適用ボタン
+
+```tsx
+<Button color={Button.Colors.GREEN} onClick={async () => {
+    try {
+        await applyFolderData(folders);
+        showToast("並び替えを適用しました", Toasts.Type.SUCCESS);
+    } catch (e) {
+        showToast(`適用に失敗しました: ${e instanceof Error ? e.message : e}`, Toasts.Type.FAILURE);
+    }
+}}>
+```
+
+- `applyFolderData` は store が見つからない場合に `throw new Error(...)` する（return ではなく）
+- TODO: offline 時でも success になる（Discord の proto store は offline でも書き込める）
+
+### SorterListButton（サーバーリストのボタン）
+
+```tsx
+<Tooltip text="Server Sorter" position="right" spacing={-8} tooltipClassName="vc-ss-tooltip">
+```
+
+- `ServerListRenderPosition.Above` に配置
+- `tooltipClassName="vc-ss-tooltip"` で font-size: 17px を適用
+
 ### State管理（ServerSorterModal）
 
 ```typescript
-const [folders, setFolders] = useState<GuildFolder[]>(() => SortedGuildStore.getGuildFolders());
-
-async function handleFolderUpdate(folderId: string, name: string, color: number | undefined) {
-    await updateFolderProperties(folderId, name, color);  // proto store 永続化
-    setFolders(prev => prev.map(f =>
-        f.folderId === folderId ? { ...f, folderName: name, folderColor: color } : f
-    ));  // UI 即時反映
-}
+const [folders, setFolders] = React.useState<GuildFolder[]>(() => {
+    const raw = SortedGuildStore.getGuildFolders();
+    return raw.flatMap(f =>
+        f.folderId !== undefined
+            ? [f]
+            : f.guildIds.map(guildId => ({ folderId: undefined, guildIds: [guildId] }))
+    );
+});
+const [dragKey,  setDragKey]  = React.useState<string | null>(null);
+const [dropKey,  setDropKey]  = React.useState<string | null>(null);
+const [dropMode, setDropMode] = React.useState<"reorder" | "merge" | null>(null);
 ```
+
+- ungrouped エントリは初期化時に `guildIds` 1件ずつに分解してから `folders` に入れる
+- `resetDrag()`: dragKey / dropKey / dropMode を全て null にリセット
+- `purgeEmpty()`: `guildIds.length === 0` になったフォルダを配列から除去
+
+### DnD キー体系
+
+| キー形式 | 対象 |
+|---|---|
+| `f:${folderId}` | フォルダカード全体 |
+| `b:${guildId}` | ungrouped サーバー |
+| `i:${folderId}:${guildId}` | フォルダ内の個別サーバー |
+
+### DnD ドロップ挙動（handleDrop）
+
+ドロップ先がフォルダ（`f:`）の場合、**カード上のマウス横位置**で挙動が変わる:
+- **中央（30〜70%）** → `dropMode = "merge"` → 青グロー → サーバーをフォルダに追加
+- **端（〜30% / 70%〜）** → `dropMode = "reorder"` → 白左ライン → 並び替え
+
+| fromKey | toKey | dropMode | 動作 |
+|---|---|---|---|
+| `b:` | `f:` | merge | bare item をフォルダに追加、bare item エントリ削除 |
+| `i:` | `f:` | merge | フォルダ間移動（同フォルダは no-op） |
+| `i:` | `f:` | reorder | フォルダから取り出して toKey の前に ungrouped 挿入 |
+| `f:/b:` | `f:` | reorder | カード / bare item をフォルダの前に並び替え |
+| `i:` | `b:` | - | フォルダから取り出して bare item の前に ungrouped 挿入 |
+| その他 | `b:` | - | 通常の並び替え |
+
+- フォルダから取り出した後 `guildIds` が空になったフォルダは `purgeEmpty` で自動削除
 
 ---
 
@@ -244,5 +308,12 @@ const FOLDER_COLORS = [
 - [x] V2: 折りたたみ表示（MAX_PREVIEW=2, クリックで展開）
 - [x] V2: ungrouped サーバーをカードなしで並び順通りに表示
 - [x] V2: フォルダ右クリックで名前・色を編集（proto store 永続化）
-- [ ] V2: サーバー・フォルダのドラッグ&ドロップ並び替え
-- [ ] V2: 確定ボタン（並び順を `moveGuildById` で適用）
+- [x] V2: サーバー・フォルダのドラッグ&ドロップ並び替え（FLIP アニメーション付き）
+- [x] V2: 並び替えを適用ボタン（`applyFolderData` + toast 通知）
+- [x] V2: 新規グループ作成ボタン（空フォルダを末尾に追加）
+- [x] V2: ungrouped → フォルダへ DnD でマージ（位置ベース: 中央=merge / 端=reorder）
+- [x] V2: フォルダ内サーバー → 外へ DnD（bare item の前に ungrouped 挿入 / 別フォルダにマージ）
+- [x] V2: サーバー取り出しで空になったフォルダを自動削除（purgeEmpty）
+- [x] V2: モーダル幅 90vw × 高さ 90vh
+- [ ] V2: offline 時の適用成否判定（現状 offline でも success になる）
+- [ ] V2: チュートリアル / 使い方ガイドの作成
