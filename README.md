@@ -1,48 +1,73 @@
 # ServerSorter
 
-Vencord プラグイン — Discord のサーバーを GUI で並び替えするツール。
+BetterDiscord プラグイン — Discord のサーバーを GUI で並び替えするツール。
 
 ## 機能
 
-- **Docking Tray** — 画面上部のトレイにサーバーを一時退避
-- サーバー行クリック → トレイに移動
-- トレイアイコンクリック → 元の位置に復元
-- トレイアイコンホバー → サーバー名をツールチップ表示
-- Discord を再起動するボタン（常に表示）
-
-## 使い方
-
-1. Vencord の設定から **ServerSorter** を有効化
-2. プラグインの設定ボタンからモーダルを開く
-3. リスト内のサーバーをクリックしてトレイに退避
-4. トレイ内のアイコンをクリックして元の位置に戻す
+- フォルダカードのグリッドUI（液体ガラス風スタイル）
+- ドラッグ&ドロップでサーバー・フォルダの並び替え
+- フォルダ間でのサーバー移動（DnD マージ / 並び替え）
+- 右クリックでフォルダ名・色を編集
+- 新規グループ作成
+- 変更を Discord に適用（proto store 永続化）
+- 日本語 / 英語 対応（ロケール自動検出）
 
 ## インストール
 
-```bash
-# Vencord の userplugins ディレクトリに配置
-cp -r discord_sort /path/to/Vencord/src/userplugins/
+1. `ServerSorter.plugin.js` を BetterDiscord の plugins フォルダに配置:
 
-# ビルド
-cd /path/to/Vencord
-pnpm build
+   ```
+   ~/Library/Application Support/BetterDiscord/plugins/   # macOS
+   %appdata%\BetterDiscord\plugins\                        # Windows
+   ```
+
+2. BetterDiscord の設定 → Plugins から **ServerSorter** を有効化
+
+## ビルド
+
+```bash
+cd src/userplugins/discord_sort
+npm install
+node build-bd.js
 ```
+
+ビルド成功時、`ServerSorter.plugin.js` が以下の2箇所に出力されます:
+
+- `discord_sort/ServerSorter.plugin.js`（リポジトリ内）
+- `~/Library/Application Support/BetterDiscord/plugins/ServerSorter.plugin.js`
 
 ## ファイル構成
 
 ```
 discord_sort/
-├── index.tsx     # プラグイン定義・モーダルUI
-├── debug.ts      # サーバー移動・永続化ロジック
-├── style.css     # スタイル
-└── discord.css   # 参照用: 使用可能な Discord CSS 変数一覧
+├── bd-src/
+│   ├── Plugin.ts              # エントリ（ServerSorter クラス）
+│   ├── ServerSorterModal.tsx  # メインモーダル UI・DnD ロジック
+│   ├── FolderCard.tsx         # フォルダカードコンポーネント
+│   ├── FolderEditModal.tsx    # フォルダ編集モーダル
+│   ├── TutorialOverlay.tsx    # チュートリアルオーバーレイ
+│   ├── SorterButton.tsx       # サーバーリスト挿入ボタン
+│   ├── GuildIcon.tsx          # サーバーアイコンコンポーネント
+│   ├── Btn.tsx                # 汎用ボタンコンポーネント
+│   ├── constants.ts           # プラグインメタ情報・色定数・翻訳文字列
+│   ├── css.ts                 # スタイル文字列
+│   ├── utils.ts               # ユーティリティ関数
+│   ├── types.ts               # 型定義
+│   └── global.d.ts            # BdApi グローバル型宣言
+├── build-bd.js                # esbuild バンドルスクリプト
+├── ServerSorter.plugin.js     # ビルド済み（BetterDiscord 用）
+└── package.json
 ```
 
 ## 開発状況
 
-- [x] サーバー・フォルダ情報の取得
-- [x] サーバー移動・永続化（`GUILD_MOVE_BY_ID` + proto store）
-- [x] Docking Tray UI（liquid glass スタイル）
-- [x] クリックによるトレイへの退避・元位置への復元
-- [ ] ドラッグ&ドロップによる並び替え
-- [ ] 確定ボタン（トレイの並びを実際に適用）
+- [x] サーバー・フォルダ情報の取得（GuildStore / SortedGuildStore）
+- [x] フォルダカードグリッド UI（liquid glass スタイル）
+- [x] ドラッグ&ドロップ並び替え（FLIP アニメーション付き）
+- [x] フォルダ間サーバー移動（DnD マージ / 並び替え）
+- [x] 右クリックでフォルダ名・色を編集
+- [x] 新規グループ作成
+- [x] 変更を Discord に適用（proto store 永続化）
+- [x] 初回チュートリアルオーバーレイ
+- [x] i18n 対応（ja / en）
+- [ ] オフライン時の適用成否判定

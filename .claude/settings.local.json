@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node build-bd.js)",
+      "Bash(node /Users/kazumatago/Documents/GitHub/Vencord/src/userplugins/discord_sort/build-bd.js)"
+    ]
+  }
+}

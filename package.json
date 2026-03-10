@@ -1,0 +1,12 @@
+{
+    "name": "server-sorter-bd",
+    "private": true,
+    "scripts": {
+        "build": "node build-bd.js",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@types/react": "^18.3.0",
+        "esbuild": "^0.24.0"
+    }
+}
