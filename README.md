@@ -1,48 +1,63 @@
 # ServerSorter
 
-Vencord プラグイン — Discord のサーバーを GUI で並び替えするツール。
+A Vencord plugin to sort and organize Discord servers via a drag & drop GUI.
 
-## 機能
+![ServerSorter](docs/thumbnail.png)
 
-- **Docking Tray** — 画面上部のトレイにサーバーを一時退避
-- サーバー行クリック → トレイに移動
-- トレイアイコンクリック → 元の位置に復元
-- トレイアイコンホバー → サーバー名をツールチップ表示
-- Discord を再起動するボタン（常に表示）
+> **For BetterDiscord, see the [`dev-betterDiscord`](../../tree/dev-betterDiscord) branch.**
 
-## 使い方
+## Features
 
-1. Vencord の設定から **ServerSorter** を有効化
-2. プラグインの設定ボタンからモーダルを開く
-3. リスト内のサーバーをクリックしてトレイに退避
-4. トレイ内のアイコンをクリックして元の位置に戻す
+- Folder card grid UI with liquid glass style
+- Drag & drop to reorder servers and folders (FLIP animation)
+- Move servers between folders (DnD merge / reorder by drop position)
+- Right-click a folder to edit its name and color
+- Create new groups
+- Apply changes to Discord (proto store persistence)
+- i18n support (Japanese / English, auto-detected from locale)
+- First-launch tutorial overlay with re-openable info button
 
-## インストール
+## Usage
+
+1. Enable **ServerSorter** in Vencord settings
+2. Click the folder icon in the server list to open the modal
+3. Drag & drop to reorder servers and folders
+4. Right-click a folder card to edit its name and color
+5. Click **Apply** to save changes to Discord
+
+## Installation
 
 ```bash
-# Vencord の userplugins ディレクトリに配置
+# Place in Vencord's userplugins directory
 cp -r discord_sort /path/to/Vencord/src/userplugins/
 
-# ビルド
+# Build
 cd /path/to/Vencord
 pnpm build
 ```
 
-## ファイル構成
+## File Structure
 
 ```
 discord_sort/
-├── index.tsx     # プラグイン定義・モーダルUI
-├── debug.ts      # サーバー移動・永続化ロジック
-├── style.css     # スタイル
-└── discord.css   # 参照用: 使用可能な Discord CSS 変数一覧
+├── index.tsx     # Plugin definition & V2 modal UI
+├── modalV1.tsx   # V1 archive (Docking Tray UI)
+├── i18n.ts       # Translation strings (ja / en)
+├── debug.ts      # Server move & persistence helpers
+├── style.css     # Styles
+└── discord.css   # Reference: available Discord CSS variables
 ```
 
-## 開発状況
+## Progress
 
-- [x] サーバー・フォルダ情報の取得
-- [x] サーバー移動・永続化（`GUILD_MOVE_BY_ID` + proto store）
-- [x] Docking Tray UI（liquid glass スタイル）
-- [x] クリックによるトレイへの退避・元位置への復元
-- [ ] ドラッグ&ドロップによる並び替え
-- [ ] 確定ボタン（トレイの並びを実際に適用）
+- [x] Guild & folder info retrieval (`GuildStore` / `SortedGuildStore`)
+- [x] Server move & persistence (`GUILD_MOVE_BY_ID` + proto store)
+- [x] Folder card grid UI (liquid glass style)
+- [x] Drag & drop reorder (FLIP animation)
+- [x] DnD merge / reorder between folders
+- [x] Right-click to edit folder name & color
+- [x] New group creation
+- [x] Apply changes (proto store persistence)
+- [x] Tutorial overlay with re-openable info button
+- [x] i18n (ja / en)
+- [ ] Offline apply detection
