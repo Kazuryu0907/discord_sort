@@ -22,7 +22,7 @@ jobs:
               run: npm install
 
             - name: Build plugin
-              run: node build-bd.js
+              run: node build-bd.js --ci
             
             - name: Release plugin
               uses: softprops/action-gh-release@v2
