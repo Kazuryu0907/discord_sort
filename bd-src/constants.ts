@@ -1,6 +1,6 @@
 export const PLUGIN_ID    = "ServerSorter" as const;
 export const PLUGIN_DESC  = "Sort Discord servers via drag & drop GUI" as const;
-export const PLUGIN_VER   = "2.0.0" as const;
+export const PLUGIN_VER   = "1.0.0" as const;
 export const PLUGIN_AUTHOR = "Kazuryu" as const;
 export const MAX_PREVIEW  = 2 as const;
 
