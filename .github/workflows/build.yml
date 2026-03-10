@@ -4,9 +4,9 @@ on:
     push:
         tags: 
             - v*.*.*
-        branches: 
-            - 'dev-betterDiscord'
 
+permissions: 
+    contents: write
 
 jobs:
     build:
